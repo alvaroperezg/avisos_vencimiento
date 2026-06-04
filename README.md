@@ -1,36 +1,112 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Gestión de Seguros · Fincas Doble G
 
-## Getting Started
+Panel de control para gestionar pólizas de seguros de comunidades de propietarios, con alertas automáticas de vencimiento por email.
 
-First, run the development server:
+---
+
+## Funcionalidades
+
+- Dashboard con tabla de pólizas ordenadas por urgencia
+- Alertas automáticas por email: 60 días, 30 días y 3 días antes del vencimiento
+- Prioridad de alertas: si faltan 2 días y ninguna alerta fue enviada, se envía solo la de 3 días
+- Cron job diario a las 8:00 h (UTC) ejecutado por Vercel
+- Botón para lanzar la revisión manualmente desde el panel
+- Importación masiva de pólizas vía CSV
+- CRUD completo (añadir, editar, eliminar)
+
+---
+
+## Variables de entorno
+
+Copia `.env.local.example` como `.env.local` y rellena los valores:
+
+| Variable | Descripción | Dónde obtenerla |
+|---|---|---|
+| `SUPABASE_URL` | URL de tu proyecto Supabase | Supabase → Settings → API → Project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | Clave de servicio (acceso total) | Supabase → Settings → API → service_role key |
+| `GMAIL_USER` | Tu cuenta de Gmail | Tu dirección de correo |
+| `GMAIL_APP_PASSWORD` | Contraseña de aplicación de Google | [Contraseñas de aplicación](https://myaccount.google.com/apppasswords) — requiere 2FA activo |
+| `ALERT_EMAIL_1` | Primer destinatario de alertas | El email del gestor principal |
+| `ALERT_EMAIL_2` | Segundo destinatario (opcional) | Email adicional o dejar vacío |
+| `CRON_SECRET` | Secreto para proteger el endpoint del cron | Genera una cadena aleatoria larga (ej. `openssl rand -hex 32`) |
+
+> **Nota Gmail:** Ve a tu cuenta de Google → Seguridad → Verificación en dos pasos (debe estar activada) → Contraseñas de aplicación. Selecciona "Otra aplicación" y copia la contraseña de 16 caracteres.
+
+---
+
+## Instalación y desarrollo
 
 ```bash
+# Instalar dependencias
+npm install
+
+# Arrancar en local
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abre [http://localhost:3000](http://localhost:3000) en el navegador.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Schema de Supabase
 
-## Learn More
+1. Ve a tu proyecto en [supabase.com](https://supabase.com)
+2. Abre el **SQL Editor**
+3. Copia y pega el contenido de `supabase/schema.sql`
+4. Pulsa **Run**
 
-To learn more about Next.js, take a look at the following resources:
+Esto crea la tabla `polizas` con todos los campos necesarios.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Deploy en Vercel
 
-## Deploy on Vercel
+```bash
+# Instala Vercel CLI si no lo tienes
+npm i -g vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# Deploy
+vercel
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+O conecta el repositorio directamente desde [vercel.com/new](https://vercel.com/new).
+
+**Variables de entorno en Vercel:** Ve a tu proyecto → Settings → Environment Variables y añade todas las variables de `.env.local.example`.
+
+> `CRON_SECRET` en Vercel: Vercel genera su propio `CRON_SECRET` automáticamente para proyectos en el plan Pro/Enterprise e inyecta el header `Authorization: Bearer <CRON_SECRET>` en cada ejecución del cron. En el plan gratuito el cron funciona igual pero sin autenticación automática; en ese caso puedes dejar `CRON_SECRET` vacío en las variables de entorno (el endpoint lo permite).
+
+---
+
+## Cron job
+
+El archivo `vercel.json` configura un cron que llama a `/api/check-vencimientos` cada día a las 08:00 UTC:
+
+```json
+{
+  "crons": [
+    {
+      "path": "/api/check-vencimientos",
+      "schedule": "0 8 * * *"
+    }
+  ]
+}
+```
+
+Vercel inyecta automáticamente el header `Authorization: Bearer <CRON_SECRET>` al hacer la llamada. El endpoint verifica este token antes de ejecutar la lógica.
+
+Puedes también pulsar **"Ejecutar revisión ahora"** en el panel para lanzarlo manualmente en cualquier momento.
+
+---
+
+## Formato CSV para importación
+
+La primera fila debe ser la cabecera. Las columnas en orden:
+
+```
+comunidad,compania,vto_poliza,numero_poliza,notas
+Comunidad Sol,Mapfre,2026-03-15,MP-123456,Edificio principal
+Comunidad Luna,Allianz,2025-12-01,,Sin notas
+```
+
+- `vto_poliza`: formato `YYYY-MM-DD` o vacío
+- `numero_poliza` y `notas`: opcionales
