@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, useRef, useTransition } from 'react'
 import { runCheckAction } from './actions'
 
+// ─── Types ───────────────────────────────────────────────────────────────────
+
 type Poliza = {
   id: string
   comunidad: string
@@ -34,15 +36,28 @@ const emptyForm: FormData = {
   notas: '',
 }
 
-// ─── helpers ────────────────────────────────────────────────────────────────
+// ─── Colors ──────────────────────────────────────────────────────────────────
+
+const C = {
+  primary: '#1B3A6B',
+  secondary: '#2E86AB',
+  accent: '#E8F4F8',
+  success: '#27AE60',
+  warning: '#F39C12',
+  danger: '#E74C3C',
+  neutral: '#F8F9FA',
+  text: '#2C3E50',
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function calcDias(vto: string | null): number | null {
   if (!vto) return null
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  const vtoDate = new Date(vto)
-  vtoDate.setHours(0, 0, 0, 0)
-  return Math.floor((vtoDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+  const d = new Date(vto)
+  d.setHours(0, 0, 0, 0)
+  return Math.floor((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 }
 
 function statusPriority(dias: number | null): number {
@@ -68,51 +83,146 @@ function sortPolizas(list: Poliza[]): Poliza[] {
   })
 }
 
-type BadgeInfo = { label: string; bg: string; text: string; dot: string }
+type BadgeInfo = { label: string; bg: string; textColor: string; icon: string }
 
 function getBadge(dias: number | null): BadgeInfo {
   if (dias === null)
-    return { label: 'SIN FECHA', bg: 'bg-gray-100', text: 'text-gray-500', dot: '⚪' }
+    return { label: 'SIN FECHA', bg: '#F0F0F0', textColor: '#6c757d', icon: '📅' }
   if (dias < 0)
-    return { label: 'VENCIDA', bg: 'bg-red-900', text: 'text-white', dot: '⛔' }
+    return { label: 'VENCIDA', bg: C.danger, textColor: '#fff', icon: '✗' }
   if (dias <= 3)
-    return { label: 'URGENTE', bg: 'bg-red-100', text: 'text-red-700', dot: '🔴' }
+    return { label: 'URGENTE', bg: '#fde8e8', textColor: C.danger, icon: '⚡' }
   if (dias <= 30)
-    return { label: '30 DÍAS', bg: 'bg-orange-100', text: 'text-orange-700', dot: '🟠' }
+    return { label: '30 DÍAS', bg: '#fef3e2', textColor: C.warning, icon: '🔔' }
   if (dias <= 60)
-    return { label: '60 DÍAS', bg: 'bg-yellow-100', text: 'text-yellow-700', dot: '🟡' }
-  return { label: 'OK', bg: 'bg-green-100', text: 'text-green-700', dot: '🟢' }
+    return { label: '60 DÍAS', bg: '#fefce8', textColor: '#b7950b', icon: '⚠️' }
+  return { label: 'OK', bg: '#e8f8f0', textColor: C.success, icon: '✓' }
 }
 
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return '—'
-  const [year, month, day] = dateStr.split('-')
-  return `${day}/${month}/${year}`
+function getDiasColor(dias: number | null): string {
+  if (dias === null) return '#adb5bd'
+  if (dias < 0) return C.danger
+  if (dias <= 3) return C.danger
+  if (dias <= 30) return C.warning
+  if (dias <= 60) return '#b7950b'
+  return C.success
+}
+
+function formatDate(v: string | null): string {
+  if (!v) return '—'
+  const [y, m, d] = v.split('-')
+  return `${d}/${m}/${y}`
 }
 
 function formatDias(dias: number | null): string {
   if (dias === null) return '—'
-  if (dias < 0) return `Hace ${Math.abs(dias)} días`
+  if (dias < 0) return `${Math.abs(dias)}d vencida`
   if (dias === 0) return 'Hoy'
   return `${dias} día${dias !== 1 ? 's' : ''}`
+}
+
+// ─── SVG Icons ───────────────────────────────────────────────────────────────
+
+function ShieldCheckIcon({ size = 28, color = 'white' }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <polyline points="9 12 11 14 15 10" />
+    </svg>
+  )
+}
+
+function IconDocument({ color }: { color: string }) {
+  return (
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+    </svg>
+  )
+}
+
+function IconBell({ color }: { color: string }) {
+  return (
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 01-3.46 0" />
+    </svg>
+  )
+}
+
+function IconCalendarX({ color }: { color: string }) {
+  return (
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+      <line x1="10" y1="14" x2="14" y2="18" />
+      <line x1="14" y1="14" x2="10" y2="18" />
+    </svg>
+  )
+}
+
+function IconClock({ color }: { color: string }) {
+  return (
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  )
+}
+
+function IconEdit() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+      <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  )
+}
+
+function IconTrash() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+      <path d="M10 11v6M14 11v6" />
+      <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" />
+    </svg>
+  )
 }
 
 // ─── Toast ───────────────────────────────────────────────────────────────────
 
 function Toast({ toast, onClose }: { toast: ToastMsg; onClose: () => void }) {
   useEffect(() => {
-    const t = setTimeout(onClose, 4000)
+    const t = setTimeout(onClose, 4500)
     return () => clearTimeout(t)
   }, [onClose])
 
+  const bg = toast.type === 'success' ? C.success : C.danger
+
   return (
     <div
-      className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-lg px-5 py-3 shadow-lg text-sm font-medium transition-all
-        ${toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}
+      style={{
+        position: 'fixed', bottom: 28, right: 28, zIndex: 9999,
+        display: 'flex', alignItems: 'center', gap: 12,
+        backgroundColor: bg, color: '#fff',
+        padding: '14px 20px', borderRadius: 10,
+        boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
+        fontSize: 14, fontWeight: 500, maxWidth: 380,
+      }}
     >
-      <span>{toast.type === 'success' ? '✓' : '✕'}</span>
-      <span>{toast.message}</span>
-      <button onClick={onClose} className="ml-2 opacity-70 hover:opacity-100">✕</button>
+      <span style={{ fontSize: 18 }}>{toast.type === 'success' ? '✓' : '✕'}</span>
+      <span style={{ flex: 1 }}>{toast.message}</span>
+      <button
+        onClick={onClose}
+        style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', opacity: 0.7, fontSize: 16, padding: 0, marginLeft: 4 }}
+      >
+        ✕
+      </button>
     </div>
   )
 }
@@ -141,91 +251,109 @@ function PolizaModal({
   )
   const [saving, setSaving] = useState(false)
 
-  const set = (field: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-    setForm(f => ({ ...f, [field]: e.target.value }))
+  const set = (field: keyof FormData) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      setForm(f => ({ ...f, [field]: e.target.value }))
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
-    try {
-      await onSave(form)
-    } finally {
-      setSaving(false)
-    }
+    try { await onSave(form) } finally { setSaving(false) }
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '9px 12px', border: '1.5px solid #dee2e6',
+    borderRadius: 7, fontSize: 14, color: C.text, outline: 'none',
+    transition: 'border-color 0.2s', boxSizing: 'border-box',
+  }
+  const labelStyle: React.CSSProperties = {
+    display: 'block', fontSize: 13, fontWeight: 600, color: '#495057', marginBottom: 5,
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-lg rounded-xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b px-6 py-4">
-          <h2 className="text-lg font-semibold text-gray-800">
-            {poliza ? 'Editar póliza' : 'Nueva póliza'}
-          </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 50,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      backgroundColor: 'rgba(27,58,107,0.45)', padding: 16,
+    }}>
+      <div style={{
+        width: '100%', maxWidth: 520,
+        backgroundColor: '#fff', borderRadius: 12,
+        boxShadow: '0 20px 60px rgba(0,0,0,0.2)', overflow: 'hidden',
+      }}>
+        {/* Modal header */}
+        <div style={{
+          backgroundColor: C.primary, padding: '18px 24px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <ShieldCheckIcon size={22} />
+            <h2 style={{ margin: 0, color: '#fff', fontSize: 17, fontWeight: 700 }}>
+              {poliza ? 'Editar póliza' : 'Nueva póliza'}
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff',
+              cursor: 'pointer', borderRadius: 6, width: 30, height: 30,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
+            }}
+          >
+            ✕
+          </button>
         </div>
-        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Comunidad *</label>
-              <input
-                required
-                value={form.comunidad}
-                onChange={set('comunidad')}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                placeholder="Comunidad de propietarios..."
-              />
+
+        {/* Modal body */}
+        <form onSubmit={handleSubmit} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={labelStyle}>Comunidad *</label>
+              <input required value={form.comunidad} onChange={set('comunidad')} style={inputStyle} placeholder="Nombre de la comunidad" />
             </div>
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Compañía *</label>
-              <input
-                required
-                value={form.compania}
-                onChange={set('compania')}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                placeholder="Nombre de la aseguradora..."
-              />
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={labelStyle}>Compañía aseguradora *</label>
+              <input required value={form.compania} onChange={set('compania')} style={inputStyle} placeholder="Nombre de la aseguradora" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nº Póliza</label>
-              <input
-                value={form.numero_poliza}
-                onChange={set('numero_poliza')}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                placeholder="Opcional"
-              />
+              <label style={labelStyle}>Nº Póliza</label>
+              <input value={form.numero_poliza} onChange={set('numero_poliza')} style={inputStyle} placeholder="Opcional" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de vencimiento</label>
-              <input
-                type="date"
-                value={form.vto_poliza}
-                onChange={set('vto_poliza')}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              />
+              <label style={labelStyle}>Fecha de vencimiento</label>
+              <input type="date" value={form.vto_poliza} onChange={set('vto_poliza')} style={inputStyle} />
             </div>
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Notas</label>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={labelStyle}>Notas</label>
               <textarea
                 value={form.notas}
                 onChange={set('notas')}
                 rows={3}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none"
+                style={{ ...inputStyle, resize: 'none' }}
                 placeholder="Observaciones opcionales..."
               />
             </div>
           </div>
-          <div className="flex justify-end gap-3 pt-2">
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 4 }}>
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              style={{
+                padding: '9px 20px', borderRadius: 7, border: '1.5px solid #dee2e6',
+                background: '#fff', color: '#495057', fontSize: 14, fontWeight: 500, cursor: 'pointer',
+              }}
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+              style={{
+                padding: '9px 24px', borderRadius: 7, border: 'none',
+                background: saving ? '#6c9fcf' : C.primary, color: '#fff',
+                fontSize: 14, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer',
+              }}
             >
               {saving ? 'Guardando…' : poliza ? 'Guardar cambios' : 'Crear póliza'}
             </button>
@@ -238,16 +366,46 @@ function PolizaModal({
 
 // ─── Summary Card ─────────────────────────────────────────────────────────────
 
-function Card({ label, value, color }: { label: string; value: number; color: string }) {
+function SummaryCard({
+  label,
+  value,
+  borderColor,
+  valueColor,
+  icon,
+}: {
+  label: string
+  value: number
+  borderColor: string
+  valueColor: string
+  icon: React.ReactNode
+}) {
   return (
-    <div className="rounded-xl bg-white shadow-sm border border-gray-100 p-5">
-      <p className="text-sm text-gray-500 mb-1">{label}</p>
-      <p className={`text-3xl font-bold ${color}`}>{value}</p>
+    <div style={{
+      backgroundColor: '#fff',
+      borderRadius: 10,
+      padding: '20px 22px',
+      borderLeft: `5px solid ${borderColor}`,
+      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 18,
+    }}>
+      <div style={{
+        width: 56, height: 56, borderRadius: 12,
+        backgroundColor: `${borderColor}18`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+      }}>
+        {icon}
+      </div>
+      <div>
+        <div style={{ fontSize: 32, fontWeight: 800, color: valueColor, lineHeight: 1 }}>{value}</div>
+        <div style={{ fontSize: 13, color: '#6c757d', marginTop: 4, fontWeight: 500 }}>{label}</div>
+      </div>
     </div>
   )
 }
 
-// ─── Main Dashboard ───────────────────────────────────────────────────────────
+// ─── Dashboard ───────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
   const [polizas, setPolizas] = useState<Poliza[]>([])
@@ -286,23 +444,17 @@ export default function Dashboard() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),
     })
-    if (!res.ok) {
-      showToast('Error al guardar la póliza', 'error')
-      return
-    }
-    showToast(editingPoliza ? 'Póliza actualizada' : 'Póliza creada', 'success')
+    if (!res.ok) { showToast('Error al guardar la póliza', 'error'); return }
+    showToast(editingPoliza ? 'Póliza actualizada correctamente' : 'Póliza creada correctamente', 'success')
     setShowModal(false)
     setEditingPoliza(null)
     loadPolizas()
   }
 
   async function handleDelete(p: Poliza) {
-    if (!confirm(`¿Eliminar la póliza de "${p.comunidad}"? Esta acción no se puede deshacer.`)) return
+    if (!confirm(`¿Eliminar la póliza de "${p.comunidad}"?\nEsta acción no se puede deshacer.`)) return
     const res = await fetch(`/api/polizas/${p.id}`, { method: 'DELETE' })
-    if (!res.ok) {
-      showToast('Error al eliminar la póliza', 'error')
-      return
-    }
+    if (!res.ok) { showToast('Error al eliminar la póliza', 'error'); return }
     showToast('Póliza eliminada', 'success')
     loadPolizas()
   }
@@ -311,10 +463,9 @@ export default function Dashboard() {
     startCheckTransition(async () => {
       try {
         const result = await runCheckAction()
-        const msg =
-          result.emailsSent > 0
-            ? `Revisión completa: ${result.emailsSent} email${result.emailsSent !== 1 ? 's' : ''} enviado${result.emailsSent !== 1 ? 's' : ''}`
-            : 'Revisión completa: no hay alertas pendientes'
+        const msg = result.emailsSent > 0
+          ? `Revisión completa — ${result.emailsSent} email${result.emailsSent !== 1 ? 's' : ''} enviado${result.emailsSent !== 1 ? 's' : ''}`
+          : 'Revisión completa — no hay alertas pendientes'
         showToast(msg, 'success')
         loadPolizas()
       } catch {
@@ -327,9 +478,8 @@ export default function Dashboard() {
     const file = e.target.files?.[0]
     if (!file) return
     const text = await file.text()
-    const lines = text.trim().split('\n').slice(1) // skip header row
-    let imported = 0
-    let failed = 0
+    const lines = text.trim().split('\n').slice(1)
+    let imported = 0, failed = 0
     for (const line of lines) {
       const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''))
       const [comunidad, compania, vto_poliza, numero_poliza, notas] = cols
@@ -343,125 +493,224 @@ export default function Dashboard() {
     }
     if (csvRef.current) csvRef.current.value = ''
     showToast(
-      `CSV importado: ${imported} póliza${imported !== 1 ? 's' : ''} añadida${imported !== 1 ? 's' : ''}${failed ? `, ${failed} error${failed !== 1 ? 'es' : ''}` : ''}`,
+      `CSV importado: ${imported} póliza${imported !== 1 ? 's' : ''} añadida${imported !== 1 ? 's' : ''}${failed ? ` · ${failed} error${failed !== 1 ? 'es' : ''}` : ''}`,
       failed > 0 ? 'error' : 'success'
     )
     loadPolizas()
   }
 
-  // Computed summary values
   const sorted = sortPolizas(polizas)
   const totalAlertas = polizas.filter(p => { const d = calcDias(p.vto_poliza); return d !== null && d >= 0 && d <= 60 }).length
   const sinFecha = polizas.filter(p => !p.vto_poliza).length
   const vencidas = polizas.filter(p => { const d = calcDias(p.vto_poliza); return d !== null && d < 0 }).length
 
+  const outlineBtn: React.CSSProperties = {
+    padding: '8px 18px', borderRadius: 7, border: '1.5px solid rgba(255,255,255,0.7)',
+    background: 'transparent', color: '#fff', fontSize: 13, fontWeight: 600,
+    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+    transition: 'background 0.15s',
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Gestión de Seguros</h1>
-            <p className="text-sm text-gray-500">Fincas Doble G</p>
+    <div style={{ minHeight: '100vh', backgroundColor: C.neutral, fontFamily: "'Segoe UI', system-ui, sans-serif", color: C.text }}>
+
+      {/* ── Header ── */}
+      <header style={{ backgroundColor: C.primary, padding: '0', boxShadow: '0 2px 12px rgba(0,0,0,0.2)' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '20px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+          {/* Brand */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{
+              width: 48, height: 48, borderRadius: 10,
+              background: 'rgba(255,255,255,0.15)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              <ShieldCheckIcon size={28} />
+            </div>
+            <div>
+              <div style={{ color: '#fff', fontWeight: 800, fontSize: 22, lineHeight: 1.1, letterSpacing: '-0.3px' }}>
+                Fincas Doble G
+              </div>
+              <div style={{ color: '#93c5e8', fontSize: 13, marginTop: 2, fontWeight: 400 }}>
+                Gestión de Seguros de Comunidades
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
+
+          {/* Actions */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <button
               onClick={handleRunCheck}
               disabled={checkPending}
-              className="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100 disabled:opacity-50"
+              style={{ ...outlineBtn, opacity: checkPending ? 0.6 : 1 }}
             >
-              {checkPending ? 'Revisando…' : '▶ Ejecutar revisión ahora'}
+              <span style={{ fontSize: 15 }}>▶</span>
+              {checkPending ? 'Revisando…' : 'Ejecutar revisión'}
             </button>
-            <label className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer">
-              ↑ Importar CSV
-              <input
-                ref={csvRef}
-                type="file"
-                accept=".csv"
-                className="hidden"
-                onChange={handleCSVFile}
-              />
+
+            <label style={{ ...outlineBtn, cursor: 'pointer' }}>
+              <span style={{ fontSize: 15 }}>↑</span>
+              Importar CSV
+              <input ref={csvRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCSVFile} />
             </label>
+
             <button
               onClick={() => { setEditingPoliza(null); setShowModal(true) }}
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+              style={{
+                padding: '8px 18px', borderRadius: 7, border: 'none',
+                background: '#fff', color: C.primary, fontSize: 13, fontWeight: 700,
+                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+              }}
             >
-              + Añadir póliza
+              <span style={{ fontSize: 18, lineHeight: 1 }}>+</span>
+              Añadir póliza
             </button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Card label="Total pólizas" value={polizas.length} color="text-gray-800" />
-          <Card label="Alertas activas (≤60 días)" value={totalAlertas} color="text-orange-600" />
-          <Card label="Sin fecha asignada" value={sinFecha} color="text-gray-400" />
-          <Card label="Vencidas" value={vencidas} color="text-red-700" />
+      <main style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 32px 48px' }}>
+
+        {/* ── Summary Cards ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 32 }}>
+          <SummaryCard
+            label="Total pólizas"
+            value={polizas.length}
+            borderColor={C.secondary}
+            valueColor={C.primary}
+            icon={<IconDocument color={C.secondary} />}
+          />
+          <SummaryCard
+            label="Alertas activas (≤60 días)"
+            value={totalAlertas}
+            borderColor={C.warning}
+            valueColor={C.warning}
+            icon={<IconBell color={C.warning} />}
+          />
+          <SummaryCard
+            label="Sin fecha asignada"
+            value={sinFecha}
+            borderColor="#adb5bd"
+            valueColor="#6c757d"
+            icon={<IconCalendarX color="#adb5bd" />}
+          />
+          <SummaryCard
+            label="Vencidas"
+            value={vencidas}
+            borderColor={C.danger}
+            valueColor={C.danger}
+            icon={<IconClock color={C.danger} />}
+          />
         </div>
 
-        {/* Table */}
-        <div className="rounded-xl bg-white shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100">
-            <h2 className="font-semibold text-gray-800">Pólizas</h2>
+        {/* ── Table ── */}
+        <div style={{ backgroundColor: '#fff', borderRadius: 12, boxShadow: '0 2px 12px rgba(0,0,0,0.07)', overflow: 'hidden' }}>
+          {/* Table header bar */}
+          <div style={{ padding: '18px 24px', borderBottom: '1px solid #eee', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: C.primary }}>
+              Pólizas activas
+              {!loading && (
+                <span style={{ marginLeft: 10, fontSize: 13, fontWeight: 500, color: '#6c757d', background: C.accent, padding: '2px 10px', borderRadius: 20 }}>
+                  {sorted.length} registros
+                </span>
+              )}
+            </h2>
           </div>
+
           {loading ? (
-            <div className="py-20 text-center text-gray-400 text-sm">Cargando…</div>
+            <div style={{ padding: '80px 24px', textAlign: 'center', color: '#adb5bd', fontSize: 15 }}>
+              Cargando pólizas…
+            </div>
           ) : sorted.length === 0 ? (
-            <div className="py-20 text-center text-gray-400 text-sm">
-              No hay pólizas registradas.{' '}
-              <button
-                onClick={() => { setEditingPoliza(null); setShowModal(true) }}
-                className="text-indigo-600 hover:underline"
-              >
-                Añade la primera
-              </button>
+            <div style={{ padding: '80px 24px', textAlign: 'center' }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
+              <p style={{ color: '#6c757d', fontSize: 15, margin: 0 }}>
+                No hay pólizas registradas.{' '}
+                <button
+                  onClick={() => { setEditingPoliza(null); setShowModal(true) }}
+                  style={{ background: 'none', border: 'none', color: C.secondary, cursor: 'pointer', fontWeight: 600, fontSize: 15, padding: 0 }}
+                >
+                  Añade la primera póliza
+                </button>
+              </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                 <thead>
-                  <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wide">
-                    <th className="px-5 py-3 text-left font-medium">Comunidad</th>
-                    <th className="px-5 py-3 text-left font-medium">Compañía</th>
-                    <th className="px-5 py-3 text-left font-medium">Nº Póliza</th>
-                    <th className="px-5 py-3 text-left font-medium">Vencimiento</th>
-                    <th className="px-5 py-3 text-left font-medium">Días restantes</th>
-                    <th className="px-5 py-3 text-left font-medium">Estado</th>
-                    <th className="px-5 py-3 text-right font-medium">Acciones</th>
+                  <tr style={{ backgroundColor: C.primary }}>
+                    {['Comunidad', 'Compañía', 'Nº Póliza', 'Vencimiento', 'Días restantes', 'Estado', 'Acciones'].map((h, i) => (
+                      <th key={h} style={{
+                        padding: '13px 16px', textAlign: i === 6 ? 'right' : 'left',
+                        color: '#fff', fontWeight: 600, fontSize: 12,
+                        textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap',
+                      }}>
+                        {h}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {sorted.map(p => {
+                <tbody>
+                  {sorted.map((p, idx) => {
                     const dias = calcDias(p.vto_poliza)
                     const badge = getBadge(dias)
+                    const rowBg = idx % 2 === 0 ? '#fff' : C.neutral
                     return (
-                      <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-5 py-3.5 font-medium text-gray-900">{p.comunidad}</td>
-                        <td className="px-5 py-3.5 text-gray-600">{p.compania}</td>
-                        <td className="px-5 py-3.5 text-gray-500">{p.numero_poliza ?? '—'}</td>
-                        <td className="px-5 py-3.5 text-gray-600">{formatDate(p.vto_poliza)}</td>
-                        <td className="px-5 py-3.5 text-gray-600">{formatDias(dias)}</td>
-                        <td className="px-5 py-3.5">
-                          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${badge.bg} ${badge.text}`}>
-                            <span>{badge.dot}</span>
-                            {badge.label}
+                      <tr
+                        key={p.id}
+                        style={{ backgroundColor: rowBg, transition: 'background 0.1s' }}
+                        onMouseEnter={e => (e.currentTarget.style.backgroundColor = C.accent)}
+                        onMouseLeave={e => (e.currentTarget.style.backgroundColor = rowBg)}
+                      >
+                        <td style={{ padding: '13px 16px', fontWeight: 600, color: C.text, borderBottom: '1px solid #f0f0f0' }}>
+                          {p.comunidad}
+                        </td>
+                        <td style={{ padding: '13px 16px', color: '#495057', borderBottom: '1px solid #f0f0f0' }}>
+                          {p.compania}
+                        </td>
+                        <td style={{ padding: '13px 16px', color: '#6c757d', fontFamily: 'monospace', fontSize: 13, borderBottom: '1px solid #f0f0f0' }}>
+                          {p.numero_poliza ?? '—'}
+                        </td>
+                        <td style={{ padding: '13px 16px', color: '#495057', borderBottom: '1px solid #f0f0f0', whiteSpace: 'nowrap' }}>
+                          {formatDate(p.vto_poliza)}
+                        </td>
+                        <td style={{ padding: '13px 16px', borderBottom: '1px solid #f0f0f0', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontWeight: 800, fontSize: 15, color: getDiasColor(dias) }}>
+                            {formatDias(dias)}
                           </span>
                         </td>
-                        <td className="px-5 py-3.5 text-right">
-                          <div className="flex items-center justify-end gap-2">
+                        <td style={{ padding: '13px 16px', borderBottom: '1px solid #f0f0f0' }}>
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 5,
+                            backgroundColor: badge.bg, color: badge.textColor,
+                            padding: '4px 10px', borderRadius: 20,
+                            fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
+                          }}>
+                            {badge.icon} {badge.label}
+                          </span>
+                        </td>
+                        <td style={{ padding: '13px 16px', borderBottom: '1px solid #f0f0f0', textAlign: 'right' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
                             <button
                               onClick={() => { setEditingPoliza(p); setShowModal(true) }}
-                              className="rounded-md border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100"
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: 5,
+                                padding: '6px 12px', borderRadius: 6,
+                                border: `1.5px solid ${C.secondary}`, background: '#fff',
+                                color: C.secondary, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                              }}
                             >
-                              Editar
+                              <IconEdit /> Editar
                             </button>
                             <button
                               onClick={() => handleDelete(p)}
-                              className="rounded-md border border-red-100 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: 5,
+                                padding: '6px 12px', borderRadius: 6,
+                                border: `1.5px solid ${C.danger}`, background: '#fff',
+                                color: C.danger, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                              }}
                             >
-                              Eliminar
+                              <IconTrash /> Eliminar
                             </button>
                           </div>
                         </td>
@@ -474,6 +723,13 @@ export default function Dashboard() {
           )}
         </div>
       </main>
+
+      {/* ── Footer ── */}
+      <footer style={{ backgroundColor: C.primary, padding: '18px 32px', textAlign: 'center', marginTop: 'auto' }}>
+        <p style={{ margin: 0, color: '#93c5e8', fontSize: 13 }}>
+          Fincas Doble G · Gestión de Seguros · © {new Date().getFullYear()}
+        </p>
+      </footer>
 
       {/* Modal */}
       {showModal && (
