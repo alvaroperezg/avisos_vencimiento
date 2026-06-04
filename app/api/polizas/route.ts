@@ -2,13 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
 export async function GET() {
-  const { data, error } = await supabase.from('polizas').select('*')
+  const { data, error, count } = await supabase
+    .from('polizas')
+    .select('*', { count: 'exact' })
 
-  if (error) {
-    console.log('Supabase error:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-  return NextResponse.json(data)
+  return NextResponse.json({
+    data: data,
+    error: error,
+    count: count,
+    hasData: data && data.length > 0,
+  })
 }
 
 export async function POST(req: NextRequest) {
