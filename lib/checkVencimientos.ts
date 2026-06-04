@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { getSupabaseAdmin } from './supabase'
 import { sendAlertEmail } from './mailer'
 import type { AlertType } from './mailer'
 
@@ -18,7 +18,7 @@ export type CheckResult = {
 }
 
 export async function checkVencimientos(): Promise<CheckResult> {
-  const { data: polizas, error } = await supabase
+  const { data: polizas, error } = await getSupabaseAdmin()
     .from('polizas')
     .select('*')
     .not('vto_poliza', 'is', null)
@@ -51,7 +51,7 @@ export async function checkVencimientos(): Promise<CheckResult> {
     if (alertType !== null && updateField !== null) {
       try {
         await sendAlertEmail(poliza, alertType, dias)
-        await supabase
+        await getSupabaseAdmin()
           .from('polizas')
           .update({ [updateField]: true })
           .eq('id', poliza.id)

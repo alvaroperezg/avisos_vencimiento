@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseAdmin } from '@/lib/supabase'
 
 export async function PUT(
   req: NextRequest,
@@ -23,7 +23,7 @@ export async function PUT(
     updateData.alerta_60_enviada = false
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseAdmin()
     .from('polizas')
     .update(updateData)
     .eq('id', id)
@@ -42,7 +42,7 @@ export async function DELETE(
 ) {
   const { id } = await params
 
-  const { error } = await supabase.from('polizas').delete().eq('id', id)
+  const { error } = await getSupabaseAdmin().from('polizas').delete().eq('id', id)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })

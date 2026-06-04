@@ -267,7 +267,8 @@ export default function Dashboard() {
     try {
       const res = await fetch('/api/polizas')
       if (!res.ok) throw new Error('Error al cargar')
-      setPolizas(await res.json())
+      const result = await res.json()
+      setPolizas(Array.isArray(result) ? result : [])
     } catch {
       showToast('Error al cargar las pólizas', 'error')
     } finally {

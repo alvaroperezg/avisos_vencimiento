@@ -1,9 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
 export type Poliza = {
   id: string
@@ -17,4 +12,22 @@ export type Poliza = {
   alerta_60_enviada: boolean
   created_at: string
   updated_at: string
+}
+
+// Anon key — NEXT_PUBLIC_ vars are baked in at Vercel build time
+export const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
+
+// Service role key — lazy init so build doesn't fail without SUPABASE_SERVICE_ROLE_KEY
+let _admin: SupabaseClient | null = null
+export function getSupabaseAdmin(): SupabaseClient {
+  if (!_admin) {
+    _admin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+  }
+  return _admin
 }

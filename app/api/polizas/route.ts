@@ -1,23 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { getSupabaseAdmin } from '@/lib/supabase'
 
 export async function GET() {
-  const { data, error, count } = await supabase
-    .from('polizas')
-    .select('*', { count: 'exact' })
+  const { data, error } = await getSupabaseAdmin().from('polizas').select('*')
 
-  return NextResponse.json({
-    data: data,
-    error: error,
-    count: count,
-    hasData: data && data.length > 0,
-  })
+  if (error) {
+    console.log('Supabase error GET /api/polizas:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+  return NextResponse.json(data)
 }
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
 
-  const { data, error } = await supabase
+  const { data, error } = await getSupabaseAdmin()
     .from('polizas')
     .insert({
       comunidad: body.comunidad,
