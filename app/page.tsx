@@ -364,6 +364,25 @@ function SectionHeader({ title, badge }: { title: string; badge?: string }) {
   )
 }
 
+// ─── Row detail helpers ───────────────────────────────────────────────────────
+
+function DetailField({ label, value, wide }: { label: string; value: string | null | undefined; wide?: boolean }) {
+  return (
+    <div style={{ gridColumn: wide ? '1 / -1' : undefined }}>
+      <div style={{ fontSize: 11, color: '#6c757d', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.4px', marginBottom: 3 }}>{label}</div>
+      <div style={{ fontSize: 14, color: value ? '#2C3E50' : '#adb5bd' }}>{value ?? '—'}</div>
+    </div>
+  )
+}
+
+function AlertSentBadge({ label, sent }: { label: string; sent: boolean }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 12, fontSize: 11, fontWeight: 600, backgroundColor: sent ? '#e8f8f0' : '#f0f0f0', color: sent ? '#27AE60' : '#adb5bd' }}>
+      {sent ? '✓' : '○'} {label}
+    </span>
+  )
+}
+
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
@@ -375,6 +394,7 @@ export default function Dashboard() {
   const [toast, setToast] = useState<ToastMsg | null>(null)
   const [checkPending, startCheckTransition] = useTransition()
   const csvRef = useRef<HTMLInputElement>(null)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   const showToast = useCallback((message: string, type: ToastMsg['type']) => {
     setToast({ message, type })
@@ -568,8 +588,8 @@ export default function Dashboard() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                 <thead>
                   <tr style={{ backgroundColor: C.primary }}>
-                    {['Comunidad', 'Compañía', 'Nº Póliza', 'Dirección', 'Vencimiento', 'Días restantes', 'Estado', 'Acciones'].map((h, i) => (
-                      <th key={h} style={{ ...tableHeaderCell, textAlign: i === 7 ? 'right' : 'left' }}>{h}</th>
+                    {['Comunidad', 'Compañía', 'Vencimiento', 'Días restantes', 'Estado', 'Acciones'].map((h, i) => (
+                      <th key={h} style={{ ...tableHeaderCell, textAlign: i === 5 ? 'right' : 'left' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -578,24 +598,35 @@ export default function Dashboard() {
                     const dias = calcDias(p.vto_poliza)
                     const badge = getBadge(dias)
                     const rowBg = idx % 2 === 0 ? '#fff' : C.neutral
-                    return (
-                      <tr key={p.id} style={{ backgroundColor: rowBg, transition: 'background 0.1s' }}
+                    const isExpanded = expandedId === p.id
+                    return [
+                      <tr key={`${p.id}-row`}
+                        style={{ backgroundColor: rowBg, transition: 'background 0.1s' }}
                         onMouseEnter={e => (e.currentTarget.style.backgroundColor = C.accent)}
-                        onMouseLeave={e => (e.currentTarget.style.backgroundColor = rowBg)}>
-                        <td style={{ padding: '13px 16px', fontWeight: 600, color: C.text, borderBottom: '1px solid #f0f0f0' }}>{p.comunidad}</td>
-                        <td style={{ padding: '13px 16px', color: '#495057', borderBottom: '1px solid #f0f0f0' }}>{p.compania}</td>
-                        <td style={{ padding: '13px 16px', color: '#6c757d', fontFamily: 'monospace', fontSize: 13, borderBottom: '1px solid #f0f0f0' }}>{p.numero_poliza ?? '—'}</td>
-                        <td style={{ padding: '13px 16px', color: '#495057', borderBottom: '1px solid #f0f0f0', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.direccion ?? ''}>{p.direccion ?? '—'}</td>
-                        <td style={{ padding: '13px 16px', color: '#495057', borderBottom: '1px solid #f0f0f0', whiteSpace: 'nowrap' }}>{formatDate(p.vto_poliza)}</td>
-                        <td style={{ padding: '13px 16px', borderBottom: '1px solid #f0f0f0', whiteSpace: 'nowrap' }}>
+                        onMouseLeave={e => (e.currentTarget.style.backgroundColor = isExpanded ? '#eef5fb' : rowBg)}>
+                        <td style={{ padding: '13px 16px', borderBottom: isExpanded ? 'none' : '1px solid #f0f0f0' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontWeight: 600, color: C.text }}>{p.comunidad}</span>
+                            <button
+                              onClick={() => setExpandedId(isExpanded ? null : p.id)}
+                              title={isExpanded ? 'Cerrar detalle' : 'Ver detalle'}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: isExpanded ? C.secondary : '#bdc3c7', padding: '1px 3px', fontSize: 16, lineHeight: 1, flexShrink: 0 }}
+                            >
+                              ⓘ
+                            </button>
+                          </div>
+                        </td>
+                        <td style={{ padding: '13px 16px', color: '#495057', borderBottom: isExpanded ? 'none' : '1px solid #f0f0f0' }}>{p.compania}</td>
+                        <td style={{ padding: '13px 16px', color: '#495057', borderBottom: isExpanded ? 'none' : '1px solid #f0f0f0', whiteSpace: 'nowrap' }}>{formatDate(p.vto_poliza)}</td>
+                        <td style={{ padding: '13px 16px', borderBottom: isExpanded ? 'none' : '1px solid #f0f0f0', whiteSpace: 'nowrap' }}>
                           <span style={{ fontWeight: 800, fontSize: 15, color: getDiasColor(dias) }}>{formatDias(dias)}</span>
                         </td>
-                        <td style={{ padding: '13px 16px', borderBottom: '1px solid #f0f0f0' }}>
+                        <td style={{ padding: '13px 16px', borderBottom: isExpanded ? 'none' : '1px solid #f0f0f0' }}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, backgroundColor: badge.bg, color: badge.textColor, padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>
                             {badge.icon} {badge.label}
                           </span>
                         </td>
-                        <td style={{ padding: '13px 16px', borderBottom: '1px solid #f0f0f0', textAlign: 'right' }}>
+                        <td style={{ padding: '13px 16px', borderBottom: isExpanded ? 'none' : '1px solid #f0f0f0', textAlign: 'right' }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
                             <button onClick={() => { setEditingPoliza(p); setShowModal(true) }} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 10px', borderRadius: 6, border: `1.5px solid ${C.secondary}`, background: '#fff', color: C.secondary, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                               <IconEdit /> Editar
@@ -608,8 +639,30 @@ export default function Dashboard() {
                             </button>
                           </div>
                         </td>
-                      </tr>
-                    )
+                      </tr>,
+                      isExpanded ? (
+                        <tr key={`${p.id}-detail`}>
+                          <td colSpan={6} style={{ padding: 0, borderBottom: '2px solid #E8F4F8' }}>
+                            <div style={{ backgroundColor: '#f0f6fb', padding: '16px 24px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, borderTop: `2px solid ${C.accent}` }}>
+                              <DetailField label="Nº Póliza" value={p.numero_poliza} />
+                              <DetailField label="CIF" value={p.cif} />
+                              <DetailField label="Compañía aseguradora" value={p.compania} />
+                              <DetailField label="Fecha de vencimiento" value={formatDate(p.vto_poliza)} />
+                              <DetailField label="Dirección" value={p.direccion} wide />
+                              <div>
+                                <div style={{ fontSize: 11, color: '#6c757d', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 6 }}>Alertas enviadas</div>
+                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                  <AlertSentBadge label="60 días" sent={p.alerta_60_enviada} />
+                                  <AlertSentBadge label="30 días" sent={p.alerta_30_enviada} />
+                                  <AlertSentBadge label="3 días" sent={p.alerta_3_enviada} />
+                                </div>
+                              </div>
+                              {p.notas && <DetailField label="Notas" value={p.notas} wide />}
+                            </div>
+                          </td>
+                        </tr>
+                      ) : null,
+                    ]
                   })}
                 </tbody>
               </table>
