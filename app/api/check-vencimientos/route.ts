@@ -12,10 +12,16 @@ export async function GET(req: NextRequest) {
 
   try {
     const result = await checkVencimientos()
-    return NextResponse.json({ ok: true, ...result })
+    return NextResponse.json({
+      ejecutado: true,
+      fecha: new Date().toISOString(),
+      emailsEnviados: result.emailsSent,
+      detalle: result.alerts,
+      errors: result.errors,
+    })
   } catch (err) {
     return NextResponse.json(
-      { ok: false, error: err instanceof Error ? err.message : String(err) },
+      { ejecutado: false, fecha: new Date().toISOString(), error: err instanceof Error ? err.message : String(err) },
       { status: 500 }
     )
   }

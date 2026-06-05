@@ -65,10 +65,25 @@ export async function checkVencimientos(): Promise<CheckResult> {
     }
   }
 
-  return {
+  const result: CheckResult = {
     totalPolizas: polizas?.length ?? 0,
     emailsSent,
     alerts,
     errors,
   }
+
+  // Guardar log de ejecución (fallo silencioso para no interrumpir el resultado)
+  try {
+    await getSupabaseAdmin()
+      .from('cron_logs')
+      .insert({
+        emails_enviados: emailsSent,
+        detalle: alerts,
+        error: errors.length > 0 ? errors.join('\n') : null,
+      })
+  } catch {
+    // No interrumpir si falla el log
+  }
+
+  return result
 }

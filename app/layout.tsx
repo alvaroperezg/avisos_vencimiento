@@ -5,7 +5,7 @@ import './globals.css'
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist' })
 
 export const metadata: Metadata = {
-  title: 'Gestión de Seguros · Fincas Doble G',
+  title: 'Fincas Doble G · Seguros',
   description: 'Panel de control de pólizas y alertas de vencimiento',
 }
 

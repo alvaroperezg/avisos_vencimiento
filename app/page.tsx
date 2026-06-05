@@ -18,6 +18,14 @@ type Poliza = {
   created_at: string
 }
 
+type CronLog = {
+  id: string
+  ejecutado_at: string
+  emails_enviados: number
+  detalle: Array<{ comunidad: string; tipo: number; dias: number }> | null
+  error: string | null
+}
+
 type ToastMsg = { message: string; type: 'success' | 'error' }
 
 type FormData = {
@@ -121,6 +129,14 @@ function formatDias(dias: number | null): string {
   return `${dias} día${dias !== 1 ? 's' : ''}`
 }
 
+function formatDateTime(iso: string): { date: string; time: string } {
+  const d = new Date(iso)
+  return {
+    date: d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+    time: d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+  }
+}
+
 // ─── SVG Icons ───────────────────────────────────────────────────────────────
 
 function ShieldCheckIcon({ size = 28, color = 'white' }: { size?: number; color?: string }) {
@@ -202,51 +218,32 @@ function Toast({ toast, onClose }: { toast: ToastMsg; onClose: () => void }) {
     return () => clearTimeout(t)
   }, [onClose])
 
-  const bg = toast.type === 'success' ? C.success : C.danger
-
   return (
-    <div
-      style={{
-        position: 'fixed', bottom: 28, right: 28, zIndex: 9999,
-        display: 'flex', alignItems: 'center', gap: 12,
-        backgroundColor: bg, color: '#fff',
-        padding: '14px 20px', borderRadius: 10,
-        boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
-        fontSize: 14, fontWeight: 500, maxWidth: 380,
-      }}
-    >
+    <div style={{
+      position: 'fixed', bottom: 28, right: 28, zIndex: 9999,
+      display: 'flex', alignItems: 'center', gap: 12,
+      backgroundColor: toast.type === 'success' ? C.success : C.danger,
+      color: '#fff', padding: '14px 20px', borderRadius: 10,
+      boxShadow: '0 4px 20px rgba(0,0,0,0.18)',
+      fontSize: 14, fontWeight: 500, maxWidth: 380,
+    }}>
       <span style={{ fontSize: 18 }}>{toast.type === 'success' ? '✓' : '✕'}</span>
       <span style={{ flex: 1 }}>{toast.message}</span>
-      <button
-        onClick={onClose}
-        style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', opacity: 0.7, fontSize: 16, padding: 0, marginLeft: 4 }}
-      >
-        ✕
-      </button>
+      <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', opacity: 0.7, fontSize: 16, padding: 0, marginLeft: 4 }}>✕</button>
     </div>
   )
 }
 
 // ─── Modal ───────────────────────────────────────────────────────────────────
 
-function PolizaModal({
-  poliza,
-  onClose,
-  onSave,
-}: {
+function PolizaModal({ poliza, onClose, onSave }: {
   poliza: Poliza | null
   onClose: () => void
   onSave: (form: FormData) => Promise<void>
 }) {
   const [form, setForm] = useState<FormData>(
     poliza
-      ? {
-          comunidad: poliza.comunidad,
-          compania: poliza.compania,
-          numero_poliza: poliza.numero_poliza ?? '',
-          vto_poliza: poliza.vto_poliza ?? '',
-          notas: poliza.notas ?? '',
-        }
+      ? { comunidad: poliza.comunidad, compania: poliza.compania, numero_poliza: poliza.numero_poliza ?? '', vto_poliza: poliza.vto_poliza ?? '', notas: poliza.notas ?? '' }
       : emptyForm
   )
   const [saving, setSaving] = useState(false)
@@ -263,49 +260,25 @@ function PolizaModal({
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '9px 12px', border: '1.5px solid #dee2e6',
-    borderRadius: 7, fontSize: 14, color: C.text, outline: 'none',
-    transition: 'border-color 0.2s', boxSizing: 'border-box',
+    borderRadius: 7, fontSize: 14, color: C.text, outline: 'none', boxSizing: 'border-box',
   }
   const labelStyle: React.CSSProperties = {
     display: 'block', fontSize: 13, fontWeight: 600, color: '#495057', marginBottom: 5,
   }
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 50,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      backgroundColor: 'rgba(27,58,107,0.45)', padding: 16,
-    }}>
-      <div style={{
-        width: '100%', maxWidth: 520,
-        backgroundColor: '#fff', borderRadius: 12,
-        boxShadow: '0 20px 60px rgba(0,0,0,0.2)', overflow: 'hidden',
-      }}>
-        {/* Modal header */}
-        <div style={{
-          backgroundColor: C.primary, padding: '18px 24px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(27,58,107,0.45)', padding: 16 }}>
+      <div style={{ width: '100%', maxWidth: 520, backgroundColor: '#fff', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', overflow: 'hidden' }}>
+        <div style={{ backgroundColor: C.primary, padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <ShieldCheckIcon size={22} />
             <h2 style={{ margin: 0, color: '#fff', fontSize: 17, fontWeight: 700 }}>
               {poliza ? 'Editar póliza' : 'Nueva póliza'}
             </h2>
           </div>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff',
-              cursor: 'pointer', borderRadius: 6, width: 30, height: 30,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
-            }}
-          >
-            ✕
-          </button>
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', cursor: 'pointer', borderRadius: 6, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>✕</button>
         </div>
-
-        {/* Modal body */}
-        <form onSubmit={handleSubmit} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <form onSubmit={handleSubmit} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div style={{ gridColumn: '1 / -1' }}>
               <label style={labelStyle}>Comunidad *</label>
@@ -325,36 +298,14 @@ function PolizaModal({
             </div>
             <div style={{ gridColumn: '1 / -1' }}>
               <label style={labelStyle}>Notas</label>
-              <textarea
-                value={form.notas}
-                onChange={set('notas')}
-                rows={3}
-                style={{ ...inputStyle, resize: 'none' }}
-                placeholder="Observaciones opcionales..."
-              />
+              <textarea value={form.notas} onChange={set('notas')} rows={3} style={{ ...inputStyle, resize: 'none' }} placeholder="Observaciones opcionales..." />
             </div>
           </div>
-
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 4 }}>
-            <button
-              type="button"
-              onClick={onClose}
-              style={{
-                padding: '9px 20px', borderRadius: 7, border: '1.5px solid #dee2e6',
-                background: '#fff', color: '#495057', fontSize: 14, fontWeight: 500, cursor: 'pointer',
-              }}
-            >
+            <button type="button" onClick={onClose} style={{ padding: '9px 20px', borderRadius: 7, border: '1.5px solid #dee2e6', background: '#fff', color: '#495057', fontSize: 14, fontWeight: 500, cursor: 'pointer' }}>
               Cancelar
             </button>
-            <button
-              type="submit"
-              disabled={saving}
-              style={{
-                padding: '9px 24px', borderRadius: 7, border: 'none',
-                background: saving ? '#6c9fcf' : C.primary, color: '#fff',
-                fontSize: 14, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer',
-              }}
-            >
+            <button type="submit" disabled={saving} style={{ padding: '9px 24px', borderRadius: 7, border: 'none', background: saving ? '#6c9fcf' : C.primary, color: '#fff', fontSize: 14, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer' }}>
               {saving ? 'Guardando…' : poliza ? 'Guardar cambios' : 'Crear póliza'}
             </button>
           </div>
@@ -366,35 +317,12 @@ function PolizaModal({
 
 // ─── Summary Card ─────────────────────────────────────────────────────────────
 
-function SummaryCard({
-  label,
-  value,
-  borderColor,
-  valueColor,
-  icon,
-}: {
-  label: string
-  value: number
-  borderColor: string
-  valueColor: string
-  icon: React.ReactNode
+function SummaryCard({ label, value, borderColor, valueColor, icon }: {
+  label: string; value: number; borderColor: string; valueColor: string; icon: React.ReactNode
 }) {
   return (
-    <div style={{
-      backgroundColor: '#fff',
-      borderRadius: 10,
-      padding: '20px 22px',
-      borderLeft: `5px solid ${borderColor}`,
-      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-      display: 'flex',
-      alignItems: 'center',
-      gap: 18,
-    }}>
-      <div style={{
-        width: 56, height: 56, borderRadius: 12,
-        backgroundColor: `${borderColor}18`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-      }}>
+    <div style={{ backgroundColor: '#fff', borderRadius: 10, padding: '20px 22px', borderLeft: `5px solid ${borderColor}`, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', gap: 18 }}>
+      <div style={{ width: 56, height: 56, borderRadius: 12, backgroundColor: `${borderColor}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
         {icon}
       </div>
       <div>
@@ -405,10 +333,28 @@ function SummaryCard({
   )
 }
 
+// ─── Table section header ──────────────────────────────────────────────────────
+
+function SectionHeader({ title, badge }: { title: string; badge?: string }) {
+  return (
+    <div style={{ padding: '18px 24px', borderBottom: '1px solid #eee', display: 'flex', alignItems: 'center' }}>
+      <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: C.primary }}>
+        {title}
+        {badge && (
+          <span style={{ marginLeft: 10, fontSize: 13, fontWeight: 500, color: '#6c757d', background: C.accent, padding: '2px 10px', borderRadius: 20 }}>
+            {badge}
+          </span>
+        )}
+      </h2>
+    </div>
+  )
+}
+
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
   const [polizas, setPolizas] = useState<Poliza[]>([])
+  const [cronLogs, setCronLogs] = useState<CronLog[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingPoliza, setEditingPoliza] = useState<Poliza | null>(null)
@@ -418,6 +364,18 @@ export default function Dashboard() {
 
   const showToast = useCallback((message: string, type: ToastMsg['type']) => {
     setToast({ message, type })
+  }, [])
+
+  const loadCronLogs = useCallback(async () => {
+    try {
+      const res = await fetch('/api/cron-logs')
+      if (res.ok) {
+        const result = await res.json()
+        setCronLogs(Array.isArray(result) ? result : [])
+      }
+    } catch {
+      // Logs son no-críticos, fallo silencioso
+    }
   }, [])
 
   const loadPolizas = useCallback(async () => {
@@ -434,16 +392,15 @@ export default function Dashboard() {
     }
   }, [showToast])
 
-  useEffect(() => { loadPolizas() }, [loadPolizas])
+  useEffect(() => {
+    loadPolizas()
+    loadCronLogs()
+  }, [loadPolizas, loadCronLogs])
 
   async function handleSave(form: FormData) {
     const url = editingPoliza ? `/api/polizas/${editingPoliza.id}` : '/api/polizas'
     const method = editingPoliza ? 'PUT' : 'POST'
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    })
+    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
     if (!res.ok) { showToast('Error al guardar la póliza', 'error'); return }
     showToast(editingPoliza ? 'Póliza actualizada correctamente' : 'Póliza creada correctamente', 'success')
     setShowModal(false)
@@ -468,6 +425,7 @@ export default function Dashboard() {
           : 'Revisión completa — no hay alertas pendientes'
         showToast(msg, 'success')
         loadPolizas()
+        loadCronLogs()
       } catch {
         showToast('Error al ejecutar la revisión', 'error')
       }
@@ -485,8 +443,7 @@ export default function Dashboard() {
       const [comunidad, compania, vto_poliza, numero_poliza, notas] = cols
       if (!comunidad || !compania) { failed++; continue }
       const res = await fetch('/api/polizas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ comunidad, compania, vto_poliza: vto_poliza || null, numero_poliza: numero_poliza || null, notas: notas || null }),
       })
       if (res.ok) imported++; else failed++
@@ -508,127 +465,66 @@ export default function Dashboard() {
     padding: '8px 18px', borderRadius: 7, border: '1.5px solid rgba(255,255,255,0.7)',
     background: 'transparent', color: '#fff', fontSize: 13, fontWeight: 600,
     cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-    transition: 'background 0.15s',
+  }
+
+  const tableHeaderCell: React.CSSProperties = {
+    padding: '13px 16px', color: '#fff', fontWeight: 600,
+    fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap',
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: C.neutral, fontFamily: "'Segoe UI', system-ui, sans-serif", color: C.text }}>
+    <div style={{ minHeight: '100vh', backgroundColor: C.neutral, fontFamily: "'Segoe UI', system-ui, sans-serif", color: C.text, display: 'flex', flexDirection: 'column' }}>
 
       {/* ── Header ── */}
-      <header style={{ backgroundColor: C.primary, padding: '0', boxShadow: '0 2px 12px rgba(0,0,0,0.2)' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '20px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-          {/* Brand */}
+      <header style={{ backgroundColor: C.primary, boxShadow: '0 2px 12px rgba(0,0,0,0.2)' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '20px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{
-              width: 48, height: 48, borderRadius: 10,
-              background: 'rgba(255,255,255,0.15)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            }}>
+            <div style={{ width: 48, height: 48, borderRadius: 10, background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <ShieldCheckIcon size={28} />
             </div>
             <div>
-              <div style={{ color: '#fff', fontWeight: 800, fontSize: 22, lineHeight: 1.1, letterSpacing: '-0.3px' }}>
-                Fincas Doble G
-              </div>
-              <div style={{ color: '#93c5e8', fontSize: 13, marginTop: 2, fontWeight: 400 }}>
-                Gestión de Seguros de Comunidades
-              </div>
+              <div style={{ color: '#fff', fontWeight: 800, fontSize: 22, lineHeight: 1.1, letterSpacing: '-0.3px' }}>Fincas Doble G</div>
+              <div style={{ color: '#93c5e8', fontSize: 13, marginTop: 2 }}>Gestión de Seguros de Comunidades</div>
             </div>
           </div>
-
-          {/* Actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <button
-              onClick={handleRunCheck}
-              disabled={checkPending}
-              style={{ ...outlineBtn, opacity: checkPending ? 0.6 : 1 }}
-            >
+            <button onClick={handleRunCheck} disabled={checkPending} style={{ ...outlineBtn, opacity: checkPending ? 0.6 : 1 }}>
               <span style={{ fontSize: 15 }}>▶</span>
               {checkPending ? 'Revisando…' : 'Ejecutar revisión'}
             </button>
-
             <label style={{ ...outlineBtn, cursor: 'pointer' }}>
               <span style={{ fontSize: 15 }}>↑</span>
               Importar CSV
               <input ref={csvRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCSVFile} />
             </label>
-
-            <button
-              onClick={() => { setEditingPoliza(null); setShowModal(true) }}
-              style={{
-                padding: '8px 18px', borderRadius: 7, border: 'none',
-                background: '#fff', color: C.primary, fontSize: 13, fontWeight: 700,
-                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-              }}
-            >
-              <span style={{ fontSize: 18, lineHeight: 1 }}>+</span>
-              Añadir póliza
+            <button onClick={() => { setEditingPoliza(null); setShowModal(true) }} style={{ padding: '8px 18px', borderRadius: 7, border: 'none', background: '#fff', color: C.primary, fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 18, lineHeight: 1 }}>+</span> Añadir póliza
             </button>
           </div>
         </div>
       </header>
 
-      <main style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 32px 48px' }}>
+      <main style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 32px 48px', flex: 1, width: '100%', boxSizing: 'border-box' }}>
 
         {/* ── Summary Cards ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 32 }}>
-          <SummaryCard
-            label="Total pólizas"
-            value={polizas.length}
-            borderColor={C.secondary}
-            valueColor={C.primary}
-            icon={<IconDocument color={C.secondary} />}
-          />
-          <SummaryCard
-            label="Alertas activas (≤60 días)"
-            value={totalAlertas}
-            borderColor={C.warning}
-            valueColor={C.warning}
-            icon={<IconBell color={C.warning} />}
-          />
-          <SummaryCard
-            label="Sin fecha asignada"
-            value={sinFecha}
-            borderColor="#adb5bd"
-            valueColor="#6c757d"
-            icon={<IconCalendarX color="#adb5bd" />}
-          />
-          <SummaryCard
-            label="Vencidas"
-            value={vencidas}
-            borderColor={C.danger}
-            valueColor={C.danger}
-            icon={<IconClock color={C.danger} />}
-          />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 28 }}>
+          <SummaryCard label="Total pólizas" value={polizas.length} borderColor={C.secondary} valueColor={C.primary} icon={<IconDocument color={C.secondary} />} />
+          <SummaryCard label="Alertas activas (≤60 días)" value={totalAlertas} borderColor={C.warning} valueColor={C.warning} icon={<IconBell color={C.warning} />} />
+          <SummaryCard label="Sin fecha asignada" value={sinFecha} borderColor="#adb5bd" valueColor="#6c757d" icon={<IconCalendarX color="#adb5bd" />} />
+          <SummaryCard label="Vencidas" value={vencidas} borderColor={C.danger} valueColor={C.danger} icon={<IconClock color={C.danger} />} />
         </div>
 
-        {/* ── Table ── */}
-        <div style={{ backgroundColor: '#fff', borderRadius: 12, boxShadow: '0 2px 12px rgba(0,0,0,0.07)', overflow: 'hidden' }}>
-          {/* Table header bar */}
-          <div style={{ padding: '18px 24px', borderBottom: '1px solid #eee', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: C.primary }}>
-              Pólizas activas
-              {!loading && (
-                <span style={{ marginLeft: 10, fontSize: 13, fontWeight: 500, color: '#6c757d', background: C.accent, padding: '2px 10px', borderRadius: 20 }}>
-                  {sorted.length} registros
-                </span>
-              )}
-            </h2>
-          </div>
-
+        {/* ── Polizas Table ── */}
+        <div style={{ backgroundColor: '#fff', borderRadius: 12, boxShadow: '0 2px 12px rgba(0,0,0,0.07)', overflow: 'hidden', marginBottom: 28 }}>
+          <SectionHeader title="Pólizas activas" badge={!loading ? `${sorted.length} registros` : undefined} />
           {loading ? (
-            <div style={{ padding: '80px 24px', textAlign: 'center', color: '#adb5bd', fontSize: 15 }}>
-              Cargando pólizas…
-            </div>
+            <div style={{ padding: '80px 24px', textAlign: 'center', color: '#adb5bd', fontSize: 15 }}>Cargando pólizas…</div>
           ) : sorted.length === 0 ? (
             <div style={{ padding: '80px 24px', textAlign: 'center' }}>
               <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
               <p style={{ color: '#6c757d', fontSize: 15, margin: 0 }}>
                 No hay pólizas registradas.{' '}
-                <button
-                  onClick={() => { setEditingPoliza(null); setShowModal(true) }}
-                  style={{ background: 'none', border: 'none', color: C.secondary, cursor: 'pointer', fontWeight: 600, fontSize: 15, padding: 0 }}
-                >
+                <button onClick={() => { setEditingPoliza(null); setShowModal(true) }} style={{ background: 'none', border: 'none', color: C.secondary, cursor: 'pointer', fontWeight: 600, fontSize: 15, padding: 0 }}>
                   Añade la primera póliza
                 </button>
               </p>
@@ -639,13 +535,7 @@ export default function Dashboard() {
                 <thead>
                   <tr style={{ backgroundColor: C.primary }}>
                     {['Comunidad', 'Compañía', 'Nº Póliza', 'Vencimiento', 'Días restantes', 'Estado', 'Acciones'].map((h, i) => (
-                      <th key={h} style={{
-                        padding: '13px 16px', textAlign: i === 6 ? 'right' : 'left',
-                        color: '#fff', fontWeight: 600, fontSize: 12,
-                        textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap',
-                      }}>
-                        {h}
-                      </th>
+                      <th key={h} style={{ ...tableHeaderCell, textAlign: i === 6 ? 'right' : 'left' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -655,61 +545,27 @@ export default function Dashboard() {
                     const badge = getBadge(dias)
                     const rowBg = idx % 2 === 0 ? '#fff' : C.neutral
                     return (
-                      <tr
-                        key={p.id}
-                        style={{ backgroundColor: rowBg, transition: 'background 0.1s' }}
+                      <tr key={p.id} style={{ backgroundColor: rowBg, transition: 'background 0.1s' }}
                         onMouseEnter={e => (e.currentTarget.style.backgroundColor = C.accent)}
-                        onMouseLeave={e => (e.currentTarget.style.backgroundColor = rowBg)}
-                      >
-                        <td style={{ padding: '13px 16px', fontWeight: 600, color: C.text, borderBottom: '1px solid #f0f0f0' }}>
-                          {p.comunidad}
-                        </td>
-                        <td style={{ padding: '13px 16px', color: '#495057', borderBottom: '1px solid #f0f0f0' }}>
-                          {p.compania}
-                        </td>
-                        <td style={{ padding: '13px 16px', color: '#6c757d', fontFamily: 'monospace', fontSize: 13, borderBottom: '1px solid #f0f0f0' }}>
-                          {p.numero_poliza ?? '—'}
-                        </td>
-                        <td style={{ padding: '13px 16px', color: '#495057', borderBottom: '1px solid #f0f0f0', whiteSpace: 'nowrap' }}>
-                          {formatDate(p.vto_poliza)}
-                        </td>
+                        onMouseLeave={e => (e.currentTarget.style.backgroundColor = rowBg)}>
+                        <td style={{ padding: '13px 16px', fontWeight: 600, color: C.text, borderBottom: '1px solid #f0f0f0' }}>{p.comunidad}</td>
+                        <td style={{ padding: '13px 16px', color: '#495057', borderBottom: '1px solid #f0f0f0' }}>{p.compania}</td>
+                        <td style={{ padding: '13px 16px', color: '#6c757d', fontFamily: 'monospace', fontSize: 13, borderBottom: '1px solid #f0f0f0' }}>{p.numero_poliza ?? '—'}</td>
+                        <td style={{ padding: '13px 16px', color: '#495057', borderBottom: '1px solid #f0f0f0', whiteSpace: 'nowrap' }}>{formatDate(p.vto_poliza)}</td>
                         <td style={{ padding: '13px 16px', borderBottom: '1px solid #f0f0f0', whiteSpace: 'nowrap' }}>
-                          <span style={{ fontWeight: 800, fontSize: 15, color: getDiasColor(dias) }}>
-                            {formatDias(dias)}
-                          </span>
+                          <span style={{ fontWeight: 800, fontSize: 15, color: getDiasColor(dias) }}>{formatDias(dias)}</span>
                         </td>
                         <td style={{ padding: '13px 16px', borderBottom: '1px solid #f0f0f0' }}>
-                          <span style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 5,
-                            backgroundColor: badge.bg, color: badge.textColor,
-                            padding: '4px 10px', borderRadius: 20,
-                            fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
-                          }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, backgroundColor: badge.bg, color: badge.textColor, padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' }}>
                             {badge.icon} {badge.label}
                           </span>
                         </td>
                         <td style={{ padding: '13px 16px', borderBottom: '1px solid #f0f0f0', textAlign: 'right' }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
-                            <button
-                              onClick={() => { setEditingPoliza(p); setShowModal(true) }}
-                              style={{
-                                display: 'flex', alignItems: 'center', gap: 5,
-                                padding: '6px 12px', borderRadius: 6,
-                                border: `1.5px solid ${C.secondary}`, background: '#fff',
-                                color: C.secondary, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                              }}
-                            >
+                            <button onClick={() => { setEditingPoliza(p); setShowModal(true) }} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 6, border: `1.5px solid ${C.secondary}`, background: '#fff', color: C.secondary, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                               <IconEdit /> Editar
                             </button>
-                            <button
-                              onClick={() => handleDelete(p)}
-                              style={{
-                                display: 'flex', alignItems: 'center', gap: 5,
-                                padding: '6px 12px', borderRadius: 6,
-                                border: `1.5px solid ${C.danger}`, background: '#fff',
-                                color: C.danger, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                              }}
-                            >
+                            <button onClick={() => handleDelete(p)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 6, border: `1.5px solid ${C.danger}`, background: '#fff', color: C.danger, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                               <IconTrash /> Eliminar
                             </button>
                           </div>
@@ -722,16 +578,81 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+
+        {/* ── Historial de ejecuciones ── */}
+        <div style={{ backgroundColor: '#fff', borderRadius: 12, boxShadow: '0 2px 12px rgba(0,0,0,0.07)', overflow: 'hidden' }}>
+          <SectionHeader title="Historial de ejecuciones" badge="Últimas 10" />
+          {cronLogs.length === 0 ? (
+            <div style={{ padding: '48px 24px', textAlign: 'center' }}>
+              <div style={{ fontSize: 36, marginBottom: 10 }}>🕐</div>
+              <p style={{ color: '#adb5bd', fontSize: 14, margin: 0 }}>Aún no hay ejecuciones registradas</p>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+                <thead>
+                  <tr style={{ backgroundColor: C.primary }}>
+                    {['Fecha y hora', 'Emails enviados', 'Alertas generadas', 'Estado'].map(h => (
+                      <th key={h} style={{ ...tableHeaderCell, textAlign: 'left' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {cronLogs.map((log, idx) => {
+                    const { date, time } = formatDateTime(log.ejecutado_at)
+                    const alertas = Array.isArray(log.detalle) ? log.detalle : []
+                    const rowBg = idx % 2 === 0 ? '#fff' : C.neutral
+                    return (
+                      <tr key={log.id} style={{ backgroundColor: rowBg, borderBottom: '1px solid #f0f0f0' }}
+                        onMouseEnter={e => (e.currentTarget.style.backgroundColor = C.accent)}
+                        onMouseLeave={e => (e.currentTarget.style.backgroundColor = rowBg)}>
+                        <td style={{ padding: '12px 16px', fontWeight: 500, color: C.text, whiteSpace: 'nowrap' }}>
+                          {date}
+                          <span style={{ color: '#6c757d', marginLeft: 8, fontWeight: 400 }}>{time}</span>
+                        </td>
+                        <td style={{ padding: '12px 16px' }}>
+                          <span style={{ fontWeight: 700, fontSize: 16, color: log.emails_enviados > 0 ? C.success : '#adb5bd' }}>
+                            {log.emails_enviados}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 16px', color: '#495057', fontSize: 13, maxWidth: 320 }}>
+                          {alertas.length > 0
+                            ? alertas.map((a, i) => (
+                                <span key={i} style={{ display: 'inline-block', background: C.accent, borderRadius: 12, padding: '2px 8px', marginRight: 4, marginBottom: 2, fontSize: 12, color: C.primary, fontWeight: 500 }}>
+                                  {a.comunidad} ({a.tipo}d)
+                                </span>
+                              ))
+                            : <span style={{ color: '#adb5bd' }}>—</span>
+                          }
+                        </td>
+                        <td style={{ padding: '12px 16px' }}>
+                          {log.error ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, backgroundColor: '#fde8e8', color: C.danger, padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>
+                              ✕ Error
+                            </span>
+                          ) : (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, backgroundColor: '#e8f8f0', color: C.success, padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>
+                              ✓ OK
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </main>
 
       {/* ── Footer ── */}
-      <footer style={{ backgroundColor: C.primary, padding: '18px 32px', textAlign: 'center', marginTop: 'auto' }}>
+      <footer style={{ backgroundColor: C.primary, padding: '18px 32px', textAlign: 'center' }}>
         <p style={{ margin: 0, color: '#93c5e8', fontSize: 13 }}>
           Fincas Doble G · Gestión de Seguros · © {new Date().getFullYear()}
         </p>
       </footer>
 
-      {/* Modal */}
       {showModal && (
         <PolizaModal
           poliza={editingPoliza}
@@ -740,7 +661,6 @@ export default function Dashboard() {
         />
       )}
 
-      {/* Toast */}
       {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
     </div>
   )
