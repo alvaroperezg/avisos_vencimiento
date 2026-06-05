@@ -22,6 +22,8 @@ export async function POST(req: NextRequest) {
       numero_poliza: body.numero_poliza || null,
       vto_poliza: body.vto_poliza || null,
       notas: body.notas || null,
+      cif: body.cif || null,
+      direccion: body.direccion || null,
     })
     .select()
     .single()

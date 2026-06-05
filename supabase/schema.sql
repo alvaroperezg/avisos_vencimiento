@@ -36,3 +36,10 @@ ALTER TABLE polizas DISABLE ROW LEVEL SECURITY;
 
 -- Índice para consultas por fecha de vencimiento
 CREATE INDEX IF NOT EXISTS idx_polizas_vto ON polizas (vto_poliza);
+
+-- ============================================================
+--  Migración: añadir campos CIF y Dirección
+--  (ejecutar solo si la tabla ya existía sin estos campos)
+-- ============================================================
+ALTER TABLE polizas ADD COLUMN IF NOT EXISTS cif TEXT;
+ALTER TABLE polizas ADD COLUMN IF NOT EXISTS direccion TEXT;

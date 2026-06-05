@@ -12,6 +12,8 @@ type Poliza = {
   numero_poliza: string | null
   vto_poliza: string | null
   notas: string | null
+  cif: string | null
+  direccion: string | null
   alerta_3_enviada: boolean
   alerta_30_enviada: boolean
   alerta_60_enviada: boolean
@@ -34,6 +36,8 @@ type FormData = {
   numero_poliza: string
   vto_poliza: string
   notas: string
+  cif: string
+  direccion: string
 }
 
 const emptyForm: FormData = {
@@ -42,6 +46,8 @@ const emptyForm: FormData = {
   numero_poliza: '',
   vto_poliza: '',
   notas: '',
+  cif: '',
+  direccion: '',
 }
 
 // ─── Colors ──────────────────────────────────────────────────────────────────
@@ -243,7 +249,7 @@ function PolizaModal({ poliza, onClose, onSave }: {
 }) {
   const [form, setForm] = useState<FormData>(
     poliza
-      ? { comunidad: poliza.comunidad, compania: poliza.compania, numero_poliza: poliza.numero_poliza ?? '', vto_poliza: poliza.vto_poliza ?? '', notas: poliza.notas ?? '' }
+      ? { comunidad: poliza.comunidad, compania: poliza.compania, numero_poliza: poliza.numero_poliza ?? '', vto_poliza: poliza.vto_poliza ?? '', notas: poliza.notas ?? '', cif: poliza.cif ?? '', direccion: poliza.direccion ?? '' }
       : emptyForm
   )
   const [saving, setSaving] = useState(false)
@@ -296,9 +302,17 @@ function PolizaModal({ poliza, onClose, onSave }: {
               <label style={labelStyle}>Fecha de vencimiento</label>
               <input type="date" value={form.vto_poliza} onChange={set('vto_poliza')} style={inputStyle} />
             </div>
+            <div>
+              <label style={labelStyle}>CIF</label>
+              <input value={form.cif} onChange={set('cif')} style={inputStyle} placeholder="Ej: H12345678" />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={labelStyle}>Dirección</label>
+              <input value={form.direccion} onChange={set('direccion')} style={inputStyle} placeholder="Dirección de la comunidad" />
+            </div>
             <div style={{ gridColumn: '1 / -1' }}>
               <label style={labelStyle}>Notas</label>
-              <textarea value={form.notas} onChange={set('notas')} rows={3} style={{ ...inputStyle, resize: 'none' }} placeholder="Observaciones opcionales..." />
+              <textarea value={form.notas} onChange={set('notas')} rows={2} style={{ ...inputStyle, resize: 'none' }} placeholder="Observaciones opcionales..." />
             </div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 4 }}>
@@ -414,6 +428,26 @@ export default function Dashboard() {
     if (!res.ok) { showToast('Error al eliminar la póliza', 'error'); return }
     showToast('Póliza eliminada', 'success')
     loadPolizas()
+  }
+
+  async function handleDownloadCarta(p: Poliza) {
+    try {
+      const response = await fetch('/api/carta-rescision', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: p.id }),
+      })
+      if (!response.ok) throw new Error('Error al generar la carta')
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `carta-rescision-${p.comunidad}.docx`
+      a.click()
+      window.URL.revokeObjectURL(url)
+    } catch {
+      showToast('Error al generar la carta de rescisión', 'error')
+    }
   }
 
   function handleRunCheck() {
@@ -534,8 +568,8 @@ export default function Dashboard() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                 <thead>
                   <tr style={{ backgroundColor: C.primary }}>
-                    {['Comunidad', 'Compañía', 'Nº Póliza', 'Vencimiento', 'Días restantes', 'Estado', 'Acciones'].map((h, i) => (
-                      <th key={h} style={{ ...tableHeaderCell, textAlign: i === 6 ? 'right' : 'left' }}>{h}</th>
+                    {['Comunidad', 'Compañía', 'Nº Póliza', 'Dirección', 'Vencimiento', 'Días restantes', 'Estado', 'Acciones'].map((h, i) => (
+                      <th key={h} style={{ ...tableHeaderCell, textAlign: i === 7 ? 'right' : 'left' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -551,6 +585,7 @@ export default function Dashboard() {
                         <td style={{ padding: '13px 16px', fontWeight: 600, color: C.text, borderBottom: '1px solid #f0f0f0' }}>{p.comunidad}</td>
                         <td style={{ padding: '13px 16px', color: '#495057', borderBottom: '1px solid #f0f0f0' }}>{p.compania}</td>
                         <td style={{ padding: '13px 16px', color: '#6c757d', fontFamily: 'monospace', fontSize: 13, borderBottom: '1px solid #f0f0f0' }}>{p.numero_poliza ?? '—'}</td>
+                        <td style={{ padding: '13px 16px', color: '#495057', borderBottom: '1px solid #f0f0f0', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.direccion ?? ''}>{p.direccion ?? '—'}</td>
                         <td style={{ padding: '13px 16px', color: '#495057', borderBottom: '1px solid #f0f0f0', whiteSpace: 'nowrap' }}>{formatDate(p.vto_poliza)}</td>
                         <td style={{ padding: '13px 16px', borderBottom: '1px solid #f0f0f0', whiteSpace: 'nowrap' }}>
                           <span style={{ fontWeight: 800, fontSize: 15, color: getDiasColor(dias) }}>{formatDias(dias)}</span>
@@ -562,10 +597,13 @@ export default function Dashboard() {
                         </td>
                         <td style={{ padding: '13px 16px', borderBottom: '1px solid #f0f0f0', textAlign: 'right' }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
-                            <button onClick={() => { setEditingPoliza(p); setShowModal(true) }} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 6, border: `1.5px solid ${C.secondary}`, background: '#fff', color: C.secondary, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                            <button onClick={() => { setEditingPoliza(p); setShowModal(true) }} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 10px', borderRadius: 6, border: `1.5px solid ${C.secondary}`, background: '#fff', color: C.secondary, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                               <IconEdit /> Editar
                             </button>
-                            <button onClick={() => handleDelete(p)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 6, border: `1.5px solid ${C.danger}`, background: '#fff', color: C.danger, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                            <button onClick={() => handleDownloadCarta(p)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 10px', borderRadius: 6, border: `1.5px solid ${C.success}`, background: '#fff', color: C.success, fontSize: 12, fontWeight: 600, cursor: 'pointer' }} title="Descargar carta de rescisión">
+                              <span style={{ fontSize: 14 }}>📄</span> Carta
+                            </button>
+                            <button onClick={() => handleDelete(p)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 10px', borderRadius: 6, border: `1.5px solid ${C.danger}`, background: '#fff', color: C.danger, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                               <IconTrash /> Eliminar
                             </button>
                           </div>

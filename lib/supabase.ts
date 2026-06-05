@@ -7,6 +7,8 @@ export type Poliza = {
   numero_poliza: string | null
   vto_poliza: string | null
   notas: string | null
+  cif: string | null
+  direccion: string | null
   alerta_3_enviada: boolean
   alerta_30_enviada: boolean
   alerta_60_enviada: boolean

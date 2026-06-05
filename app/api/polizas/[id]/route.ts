@@ -14,6 +14,8 @@ export async function PUT(
     numero_poliza: body.numero_poliza || null,
     vto_poliza: body.vto_poliza || null,
     notas: body.notas || null,
+    cif: body.cif || null,
+    direccion: body.direccion || null,
   }
 
   // Reset alert flags when vto_poliza changes so alerts fire again for the new date
