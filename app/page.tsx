@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useTransition } from 'react'
 import { runCheckAction } from './actions'
+import { DocumentoModal } from '@/components/DocumentoModal'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -14,6 +15,7 @@ type Poliza = {
   notas: string | null
   cif: string | null
   direccion: string | null
+  documento_path: string | null
   alerta_3_enviada: boolean
   alerta_30_enviada: boolean
   alerta_60_enviada: boolean
@@ -628,11 +630,19 @@ export default function Dashboard() {
                         </td>
                         <td style={{ padding: '13px 16px', borderBottom: isExpanded ? 'none' : '1px solid #f0f0f0', textAlign: 'right' }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}>
-                            <button onClick={() => { setEditingPoliza(p); setShowModal(true) }} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 10px', borderRadius: 6, border: `1.5px solid ${C.secondary}`, background: '#fff', color: C.secondary, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                              <IconEdit /> Editar
-                            </button>
                             <button onClick={() => handleDownloadCarta(p)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 10px', borderRadius: 6, border: `1.5px solid ${C.success}`, background: '#fff', color: C.success, fontSize: 12, fontWeight: 600, cursor: 'pointer' }} title="Descargar carta de rescisión">
                               <span style={{ fontSize: 14 }}>📄</span> Carta
+                            </button>
+                            <DocumentoModal
+                              polizaId={p.id}
+                              comunidad={p.comunidad}
+                              compania={p.compania}
+                              documentoPath={p.documento_path}
+                              onRefresh={loadPolizas}
+                              showToast={showToast}
+                            />
+                            <button onClick={() => { setEditingPoliza(p); setShowModal(true) }} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 10px', borderRadius: 6, border: `1.5px solid ${C.secondary}`, background: '#fff', color: C.secondary, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                              <IconEdit /> Editar
                             </button>
                             <button onClick={() => handleDelete(p)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 10px', borderRadius: 6, border: `1.5px solid ${C.danger}`, background: '#fff', color: C.danger, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                               <IconTrash /> Eliminar

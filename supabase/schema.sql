@@ -43,3 +43,4 @@ CREATE INDEX IF NOT EXISTS idx_polizas_vto ON polizas (vto_poliza);
 -- ============================================================
 ALTER TABLE polizas ADD COLUMN IF NOT EXISTS cif TEXT;
 ALTER TABLE polizas ADD COLUMN IF NOT EXISTS direccion TEXT;
+ALTER TABLE polizas ADD COLUMN IF NOT EXISTS documento_path TEXT;

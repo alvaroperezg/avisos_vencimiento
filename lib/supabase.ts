@@ -9,6 +9,7 @@ export type Poliza = {
   notas: string | null
   cif: string | null
   direccion: string | null
+  documento_path: string | null
   alerta_3_enviada: boolean
   alerta_30_enviada: boolean
   alerta_60_enviada: boolean
